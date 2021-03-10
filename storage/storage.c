@@ -71,6 +71,12 @@ const uint32_t V0_PIN_EMPTY = 1;
 // Maximum number of PIN digits allowed prior to storage version 3.
 #define V0_MAX_PIN_LEN 9
 
+// Maximum length of the wipe code.
+// Some limit should be imposed on the length, because the wipe code takes up
+// storage space proportional to the length, as opposed to the PIN, which takes
+// up constant storage space.
+#define MAX_WIPE_CODE_LEN 50
+
 // Maximum number of failed unlock attempts.
 // NOTE: The PIN counter logic relies on this constant being less than or equal
 // to 16.
@@ -368,6 +374,11 @@ static secbool auth_get(uint16_t key, const void **val, uint16_t *len) {
 }
 
 static secbool set_wipe_code(const uint8_t *wipe_code, size_t wipe_code_len) {
+  if (wipe_code_len > MAX_WIPE_CODE_LEN ||
+      wipe_code_len > UINT16_MAX - WIPE_CODE_SALT_SIZE - WIPE_CODE_TAG_SIZE) {
+    return secfalse;
+  }
+
   if (wipe_code_len == 0) {
     // This is to avoid having to check pin != PIN_EMPTY when checking the wipe
     // code.
