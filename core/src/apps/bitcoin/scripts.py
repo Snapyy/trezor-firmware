@@ -114,11 +114,13 @@ def output_derive_script(address: str, coin: CoinInfo) -> bytes:
 
 # see https://github.com/bitcoin/bips/blob/master/bip-0143.mediawiki#specification
 # item 5 for details
-def bip143_derive_script_code(
-    txi: TxInput, public_keys: List[bytes], threshold: int, coin: CoinInfo
-) -> bytearray:
+def bip143_write_script_code_prefixed(
+    w: Writer, txi: TxInput, public_keys: List[bytes], threshold: int, coin: CoinInfo
+) -> None:
     if len(public_keys) > 1:
-        return output_script_multisig(public_keys, threshold)
+        write_output_script_multisig(w, public_keys, threshold)
+        write_bitcoin_varint(w, output_script_multisig_length(public_keys, threshold))
+        return
 
     p2pkh = (
         txi.script_type == InputScriptType.SPENDWITNESS
@@ -126,11 +128,13 @@ def bip143_derive_script_code(
         or txi.script_type == InputScriptType.SPENDADDRESS
         or txi.script_type == InputScriptType.EXTERNAL
     )
+
     if p2pkh:
         # for p2wpkh in p2sh or native p2wpkh
         # the scriptCode is a classic p2pkh
-        return output_script_p2pkh(common.ecdsa_hash_pubkey(public_keys[0], coin))
-
+        write_bytes_prefixed(
+            w, output_script_p2pkh(common.ecdsa_hash_pubkey(public_keys[0], coin))
+        )
     else:
         raise wire.DataError("Unknown input script type for bip143 script code")
 
